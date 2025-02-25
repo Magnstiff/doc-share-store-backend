@@ -36,7 +36,7 @@ export async function getSystemInfo(): Promise<{
       temperature: (await si.cpuTemperature()).main + '℃',
       battery: (await battery()).percent + '%',
       cpu: (await si.currentLoad()).currentLoad.toFixed(1) + '%',
-      memory: `${memUsed}/${memTotal}(${((memUsed / memTotal) * 100).toFixed(1)}%)`,
+      memory: `${sizeToString(memUsed)}/${sizeToString(memTotal)}(${((memUsed / memTotal) * 100).toFixed(1)}%)`,
       disk: `${sizeToString(diskUsed)}/${sizeToString(diskTotal)}(${((diskUsed / diskTotal) * 100).toFixed(1)}%)`,
     },
   }
