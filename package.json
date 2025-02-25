@@ -9,7 +9,8 @@
     "build": "tsc"
   },
   "dependencies": {
-    "express": "^4.18.2"
+    "express": "^4.18.2",
+    "systeminformation": "^5.25.11"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
