@@ -1,8 +1,34 @@
 import config from '../config'
 import path from 'path'
 import fs, { readdirSync } from 'fs'
-import { Application, Request, Response } from 'express'
-import { sizeToString } from '../common/fileUtils'
+import { Request, Response } from 'express'
+import { sizeToString } from '../common/file'
+import { fileLogger } from '../common/logger'
+
+function checkFilePath(req: Request): {
+  exist: boolean
+  isDir: boolean
+  errorInfo: string
+  filePath: string
+} {
+  let exist = false
+  let isDir = false
+  let errorInfo = ''
+  let filePath = ''
+  if (!req.query.filePath) {
+    errorInfo = 'filePath is required'
+  } else {
+    exist = true
+    filePath = path.join(config.filePath, req.query.filePath.toString())
+    if (!fs.existsSync(filePath)) {
+      errorInfo = 'file not exists'
+    } else if (fs.statSync(filePath).isDirectory()) {
+      isDir = true
+      errorInfo = 'file is a folder'
+    }
+  }
+  return { exist, isDir, errorInfo, filePath }
+}
 
 /**
  * 获取文件夹信息
@@ -10,31 +36,25 @@ import { sizeToString } from '../common/fileUtils'
  * @param res
  */
 export function getFiles(req: Request, res: Response) {
-  if (!req.query.filePath) {
-    res.send('filePath is required')
-    return
-  }
-
-  let filePath: string = req.query.filePath.toString()
-  let files: FileInfomation[] = []
-  try {
-    filePath = path.join(config.filePath, filePath)
-    files = readdirSync(filePath).map((filename) => {
-      const fileDir = path.join(filePath, filename)
-      const stats = fs.statSync(fileDir)
-      let size = stats.size
-      return {
-        fileName: {
-          name: filename,
-          isFolder: stats.isDirectory(),
-        },
-        fileSize: stats.isDirectory() ? '-' : sizeToString(size),
-      }
-    })
-  } catch (e) {
-    files = []
-    console.log(e)
-  }
+  // check if the filePath parameter is missing
+  const { exist, isDir, errorInfo, filePath } = checkFilePath(req)
+  if (!exist || !isDir) res.send(errorInfo)
+  // log
+  const ip = req.headers['x-forwarded-for'] || req.ip
+  fileLogger.info(`[${ip}] Get file list: ${req.query.filePath}`)
+  // find the file path
+  let files: FileInfomation[] = readdirSync(filePath).map((filename) => {
+    const fileDir = path.join(filePath, filename)
+    const stats = fs.statSync(fileDir)
+    let size = stats.size
+    return {
+      fileName: {
+        name: filename,
+        isFolder: stats.isDirectory(),
+      },
+      fileSize: stats.isDirectory() ? '-' : sizeToString(size),
+    }
+  })
   res.send(files)
 }
 
@@ -44,8 +64,13 @@ export function getFiles(req: Request, res: Response) {
  * @param res
  */
 export function downloadFile(req: Request, res: Response) {
-  const downloadFilePath = path.join(config.filePath, req.body.filePath)
-  res.download(downloadFilePath)
+  const { exist, isDir, errorInfo, filePath } = checkFilePath(req)
+  if (!exist || isDir) res.send(errorInfo)
+  // log
+  const ip = req.headers['x-forwarded-for'] || req.ip
+  fileLogger.info(`[${ip}] Download file: ${req.query.filePath}`)
+  // downlaod
+  res.download(filePath)
 }
 
 /**
@@ -54,7 +79,12 @@ export function downloadFile(req: Request, res: Response) {
  * @param res
  */
 export function previewFile(req: Request, res: Response) {
-  const filePath: string = path.join(config.filePath, req.query.filePath.toString())
+  const { exist, isDir, errorInfo, filePath } = checkFilePath(req)
+  if (!exist || isDir) res.send(errorInfo)
+  // log
+  const ip = req.headers['x-forwarded-for'] || req.ip
+  fileLogger.info(`[${ip}] Preview file: ${req.query.filePath}`)
+  // get the file extension
   let readStream = undefined
   if (req.headers.range) {
     const fileSize: number = fs.statSync(filePath).size
