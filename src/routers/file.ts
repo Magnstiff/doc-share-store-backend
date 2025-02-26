@@ -4,7 +4,13 @@ import fs, { readdirSync } from 'fs'
 import { Request, Response } from 'express'
 import { sizeToString } from '../common/file'
 import { fileLogger } from '../common/logger'
+import { FileInfomation } from './RouterType'
 
+/**
+ * check if the file path is valid
+ * @param req request
+ * @returns {exist, isDir, errorInfo, filePath}
+ */
 function checkFilePath(req: Request): {
   exist: boolean
   isDir: boolean
@@ -38,7 +44,10 @@ function checkFilePath(req: Request): {
 export function getFiles(req: Request, res: Response) {
   // check if the filePath parameter is missing
   const { exist, isDir, errorInfo, filePath } = checkFilePath(req)
-  if (!exist || !isDir) res.send(errorInfo)
+  if (!exist || !isDir) {
+    res.send(errorInfo)
+    return
+  }
   // log
   const ip = req.headers['x-forwarded-for'] || req.ip
   fileLogger.info(`[${ip}] Get file list: ${req.query.filePath}`)
@@ -53,6 +62,7 @@ export function getFiles(req: Request, res: Response) {
         isFolder: stats.isDirectory(),
       },
       fileSize: stats.isDirectory() ? '-' : sizeToString(size),
+      filePath: path.join(req.query.filePath.toString(), filename),
     }
   })
   res.send(files)
@@ -65,7 +75,10 @@ export function getFiles(req: Request, res: Response) {
  */
 export function downloadFile(req: Request, res: Response) {
   const { exist, isDir, errorInfo, filePath } = checkFilePath(req)
-  if (!exist || isDir) res.send(errorInfo)
+  if (!exist || isDir) {
+    res.send(errorInfo)
+    return
+  }
   // log
   const ip = req.headers['x-forwarded-for'] || req.ip
   fileLogger.info(`[${ip}] Download file: ${req.query.filePath}`)
@@ -80,7 +93,10 @@ export function downloadFile(req: Request, res: Response) {
  */
 export function previewFile(req: Request, res: Response) {
   const { exist, isDir, errorInfo, filePath } = checkFilePath(req)
-  if (!exist || isDir) res.send(errorInfo)
+  if (!exist || isDir) {
+    res.send(errorInfo)
+    return
+  }
   // log
   const ip = req.headers['x-forwarded-for'] || req.ip
   fileLogger.info(`[${ip}] Preview file: ${req.query.filePath}`)
@@ -103,14 +119,4 @@ export function previewFile(req: Request, res: Response) {
     readStream = fs.createReadStream(filePath)
   }
   readStream.pipe(res)
-}
-
-declare global {
-  interface FileInfomation {
-    fileName: {
-      name: string
-      isFolder: boolean
-    }
-    fileSize: string
-  }
 }

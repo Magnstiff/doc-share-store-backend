@@ -1,6 +1,7 @@
 import { Application, Response, Request } from 'express'
 import { getFiles, downloadFile, previewFile } from './file'
 import { getSysInfo } from './system'
+import { search } from './search'
 
 const registRouter: {
   [key: string]: { handle: Function; method: 'get' | 'post' | 'delete' | 'put' }
@@ -9,6 +10,7 @@ const registRouter: {
   '/download': { handle: downloadFile, method: 'get' },
   '/preview': { handle: previewFile, method: 'get' },
   '/systemInfo': { handle: getSysInfo, method: 'get' },
+  '/search': { handle: search, method: 'get' },
 }
 
 export default function (app: Application) {
