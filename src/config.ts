@@ -1,4 +1,5 @@
 export default {
-  port: 3000,
+  httpPort: 3000,
+  ftpPort: 21,
   filePath: './files',
 }
