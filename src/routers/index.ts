@@ -1,16 +1,19 @@
 import { Application, Response, Request } from 'express'
-import { getFiles, downloadFile, previewFile } from './file'
+import { getFiles, downloadFile, previewFile, search, uploadFile } from './file'
 import { getSysInfo } from './system'
-import { search } from './search'
 
 const registRouter: {
-  [key: string]: { handle: Function; method: 'get' | 'post' | 'delete' | 'put' }
+  [key: string]: {
+    handle: (req: Request, res: Response) => void
+    method: 'get' | 'post' | 'delete' | 'put'
+  }
 } = {
   '/file': { handle: getFiles, method: 'get' },
   '/download': { handle: downloadFile, method: 'get' },
   '/preview': { handle: previewFile, method: 'get' },
-  '/systemInfo': { handle: getSysInfo, method: 'get' },
   '/search': { handle: search, method: 'get' },
+  '/upload': { handle: uploadFile, method: 'post' },
+  '/systemInfo': { handle: getSysInfo, method: 'get' },
 }
 
 export default function (app: Application) {

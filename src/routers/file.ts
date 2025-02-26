@@ -4,7 +4,8 @@ import fs, { readdirSync } from 'fs'
 import { Request, Response } from 'express'
 import { sizeToString } from '../common/file'
 import { fileLogger } from '../common/logger'
-import { FileInfomation } from './RouterType'
+import { FileInfomation } from '../types'
+import Busboy from 'busboy'
 
 /**
  * check if the file path is valid
@@ -119,4 +120,61 @@ export function previewFile(req: Request, res: Response) {
     readStream = fs.createReadStream(filePath)
   }
   readStream.pipe(res)
+}
+
+/**
+ * File information
+ * @param req
+ * @param res
+ */
+export function search(req: Request, res: Response) {
+  if (!req.query.name) {
+    res.send('name is required')
+    return
+  }
+  const searchName: string = req.query.name.toString()
+  // search
+  const result: FileInfomation[] = []
+  const bufferQueue: Array<string> = new Array<string>()
+  bufferQueue.push(config.filePath)
+  // queue search
+  while (bufferQueue.length > 0) {
+    const currentPath: string = bufferQueue.shift()
+    if (!currentPath) continue
+    const isDir: boolean = fs.statSync(currentPath).isDirectory()
+    if (isDir) {
+      readdirSync(currentPath).forEach((filename: string) => {
+        bufferQueue.push(path.join(currentPath, filename))
+      })
+    }
+    const basename: string = path.basename(currentPath)
+    if (basename.includes(searchName)) {
+      result.push({
+        fileName: {
+          name: basename,
+          isFolder: isDir,
+        },
+        fileSize: isDir ? '-' : fs.statSync(currentPath).size.toString(),
+        filePath: path.relative(config.filePath, currentPath),
+      })
+    }
+  }
+  res.send(result)
+}
+
+/**
+ * Upload file
+ * @param req
+ * @param res
+ */
+export function uploadFile(req: Request, res: Response) {
+  const busboy = Busboy({ headers: req.headers })
+  busboy.on('file', function (filename: string, file, info) {
+    const saveTo = path.join(config.filePath, filename)
+    file.pipe(fs.createWriteStream(saveTo))
+  })
+  busboy.on('finish', function () {
+    res.send('upload success')
+  })
+  req.pipe(busboy)
 }
