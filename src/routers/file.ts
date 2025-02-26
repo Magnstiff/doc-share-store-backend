@@ -1,4 +1,4 @@
-import config from '../config'
+import config from '../../nasConfig'
 import path from 'path'
 import fs, { readdirSync } from 'fs'
 import { Request, Response } from 'express'
