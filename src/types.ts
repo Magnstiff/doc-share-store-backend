@@ -1,8 +1,6 @@
 export interface FileInfomation {
-  fileName: {
-    name: string
-    isFolder: boolean
-  }
+  fileName: string
+  isFolder: boolean
   fileSize: string
   filePath: string
 }

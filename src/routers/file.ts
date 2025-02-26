@@ -58,10 +58,8 @@ export function getFiles(req: Request, res: Response) {
     const stats = fs.statSync(fileDir)
     let size = stats.size
     return {
-      fileName: {
-        name: filename,
-        isFolder: stats.isDirectory(),
-      },
+      fileName: filename,
+      isFolder: stats.isDirectory(),
       fileSize: stats.isDirectory() ? '-' : sizeToString(size),
       filePath: path.join(req.query.filePath.toString(), filename),
     }
@@ -150,10 +148,8 @@ export function search(req: Request, res: Response) {
     const basename: string = path.basename(currentPath)
     if (basename.includes(searchName)) {
       result.push({
-        fileName: {
-          name: basename,
-          isFolder: isDir,
-        },
+        fileName: basename,
+        isFolder: isDir,
         fileSize: isDir ? '-' : fs.statSync(currentPath).size.toString(),
         filePath: path.relative(config.filePath, currentPath),
       })
