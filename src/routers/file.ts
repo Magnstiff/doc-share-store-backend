@@ -51,7 +51,7 @@ export function getFiles(req: Request, res: Response) {
   }
   // log
   const ip = req.headers['x-forwarded-for'] || req.ip
-  fileLogger.info(`[${ip}] Get file list: ${req.query.filePath}`)
+  fileLogger.info(`[web][${ip}] Get file list: ${req.query.filePath}`)
   // find the file path
   let files: FileInfomation[] = readdirSync(filePath).map((filename) => {
     const fileDir = path.join(filePath, filename)
@@ -80,7 +80,7 @@ export function downloadFile(req: Request, res: Response) {
   }
   // log
   const ip = req.headers['x-forwarded-for'] || req.ip
-  fileLogger.info(`[${ip}] Download file: ${req.query.filePath}`)
+  fileLogger.info(`[web][${ip}] Download file: ${req.query.filePath}`)
   // downlaod
   res.download(filePath)
 }
@@ -98,7 +98,7 @@ export function previewFile(req: Request, res: Response) {
   }
   // log
   const ip = req.headers['x-forwarded-for'] || req.ip
-  fileLogger.info(`[${ip}] Preview file: ${req.query.filePath}`)
+  fileLogger.info(`[web][${ip}] Preview file: ${req.query.filePath}`)
   // get the file extension
   let readStream = undefined
   if (req.headers.range) {
@@ -131,6 +131,9 @@ export function search(req: Request, res: Response) {
     return
   }
   const searchName: string = req.query.name.toString()
+  // log
+  const ip = req.headers['x-forwarded-for'] || req.ip
+  fileLogger.info(`[web][${ip}] Search file: ${searchName}`)
   // search
   const result: FileInfomation[] = []
   const bufferQueue: Array<string> = new Array<string>()
@@ -164,6 +167,10 @@ export function search(req: Request, res: Response) {
  * @param res
  */
 export function uploadFile(req: Request, res: Response) {
+  // log
+  const ip = req.headers['x-forwarded-for'] || req.ip
+  fileLogger.info(`[web][${ip}] Upload file`)
+  // upload
   const busboy = Busboy({ headers: req.headers })
   busboy.on('file', function (filename: string, file, info) {
     const saveTo = path.join(config.filePath, filename)

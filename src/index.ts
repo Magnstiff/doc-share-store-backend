@@ -6,6 +6,7 @@ import config from './config'
 import { systemLogger } from './common/logger'
 import { getSystemInfo } from './common/system'
 import { FtpSrv } from 'ftp-srv'
+import { fileLogger } from './common/logger'
 
 class HttpServer {
   private app: Application
@@ -32,17 +33,16 @@ class FtpServer {
   constructor() {
     this.ftpServer = new FtpSrv({
       url: `ftp://0.0.0.0:${config.ftpPort}`,
-      anonymous: true,
+      anonymous: false,
       pasv_min: 5054,
       pasv_max: 5055,
     })
     this.ftpServer.on('login', ({ username, password }, resolve, reject) => {
-      console.log(username, password)
-      if (username === 'admin' && password === 'password') {
-        resolve({ root: config.filePath })
-      } else {
-        reject(new Error('Bad username or password'))
+      if (username !== 'admin' || password !== 'admin') {
+        return reject(new Error('Unauthorized'))
       }
+      resolve({ root: config.filePath })
+      fileLogger.info(`[ftp][${username}] login`)
     })
   }
   start() {
