@@ -15,7 +15,8 @@
     "ftp-srv": "^4.6.3",
     "pino": "^9.6.0",
     "sqlite3": "^5.1.7",
-    "systeminformation": "^5.25.11"
+    "systeminformation": "^5.25.11",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@types/busboy": "^1.5.4",

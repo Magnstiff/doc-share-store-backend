@@ -2,6 +2,8 @@ import { Application, Response, Request } from 'express'
 import { getFiles, downloadFile, previewFile, search, uploadFile } from './file'
 import { getSysInfo } from './system'
 
+// router registration
+// for example, the '/file' route is registered to the getFiles function
 const registRouter: {
   [key: string]: {
     handle: (req: Request, res: Response) => void
@@ -16,6 +18,7 @@ const registRouter: {
   '/systemInfo': { handle: getSysInfo, method: 'get' },
 }
 
+// regist routers
 export default function (app: Application) {
   for (const router in registRouter) {
     const config = registRouter[router]
