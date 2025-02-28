@@ -7,6 +7,8 @@ import { systemLogger } from './common/logger'
 import { getSystemInfo } from './common/system'
 import { FtpSrv } from 'ftp-srv'
 import { fileLogger } from './common/logger'
+import { Git } from 'node-git-server'
+import path from 'path'
 
 // server for http
 class HttpServer {
@@ -25,7 +27,7 @@ class HttpServer {
   }
   start() {
     this.app.listen(config.httpPort)
-    console.log(`Server is running on http://localhost:${config.httpPort}`)
+    console.log(`HTTP Server is running on http://localhost:${config.httpPort}`)
   }
 }
 
@@ -53,5 +55,28 @@ class FtpServer {
   }
 }
 
+// server for git
+class gitServer {
+  private repos: Git
+  constructor() {
+    this.repos = new Git(config.filePath, {
+      autoCreate: true,
+    })
+    this.repos.on('push', (push) => {
+      console.log(`push ${push.repo}/${push.commit} ( ${push.branch} )`)
+      push.accept()
+    })
+    this.repos.on('fetch', (fetch) => {
+      console.log(`fetch ${fetch.commit}`)
+      fetch.accept()
+    })
+  }
+  start() {
+    this.repos.listen(config.gitPort)
+    console.log(`Git Server is running on git://localhost:${config.gitPort}`)
+  }
+}
+
 new HttpServer().start()
 new FtpServer().start()
+new gitServer().start()
