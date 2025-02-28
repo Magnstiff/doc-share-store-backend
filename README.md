@@ -1,4 +1,4 @@
-# DOC-SHARE_STORE
+# DOC-SHARE-STORE
 
 ## feature
 
