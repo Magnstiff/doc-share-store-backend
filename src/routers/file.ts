@@ -173,7 +173,7 @@ export function uploadFile(req: Request, res: Response) {
   // upload
   const busboy = Busboy({ headers: req.headers })
   busboy.on('file', function (filename: string, file, info) {
-    const saveTo = path.join(config.filePath, filename)
+    const saveTo = path.join(config.filePath, req.query.path.toString())
     file.pipe(fs.createWriteStream(saveTo))
   })
   busboy.on('finish', function () {
