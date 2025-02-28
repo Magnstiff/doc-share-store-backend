@@ -3,4 +3,5 @@ export default {
   ftpPort: 21,
   filePath: './files',
   backupPath: './backup',
+  gitPort: 3001,
 }
