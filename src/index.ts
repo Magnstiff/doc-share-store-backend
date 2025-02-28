@@ -8,7 +8,6 @@ import { getSystemInfo } from './common/system'
 import { FtpSrv } from 'ftp-srv'
 import { fileLogger } from './common/logger'
 import { Git } from 'node-git-server'
-import path from 'path'
 
 // server for http
 class HttpServer {
