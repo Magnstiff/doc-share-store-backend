@@ -18,11 +18,9 @@ class DataBaseLite {
     // 创建数据库
     const database = new sqlite3.Database('./db/file_info.db')
     database.run(
-      `CREATE TABLE files (id INTEGER PRIMARY KEY AUTOINCREMENT, path VARCHAR(500), time DATETIME)`,
+      `CREATE TABLE backups (path VARCHAR(500), backup_path VARCHAR(128), time DATETIME)`,
     )
-    database.run(
-      `CREATE TABLE backups (id REFERENCES files(id), backup_path VARCHAR(128), time DATETIME)`,
-    )
+    database.run('CREATE TABLE encrypt_files (path VARCHAR(500), password VARCHAR(128))')
     return database
   }
 
@@ -32,23 +30,13 @@ class DataBaseLite {
    * @param backupPath 备份文件路径
    */
   createBackup(path: string, backupPath: string): void {
-    const database = this.db
-    // 查询id
-    database.serialize(() => {
-      // 创建id
-      database.all('SELECT id FROM files WHERE path = ?', [path], (err, rows) => {
-        if (err) throw err
-        if (rows.length === 0)
-          database.run('INSERT INTO files (path, time) VALUES (?, ?)', [
-            path,
-            new Date().toISOString(),
-          ])
-      })
+    this.db.serialize(() => {
       // 添加backups
-      database.run(
-        'INSERT INTO backups (id, backup_path, time) VALUES ((SELECT id FROM files WHERE path = ?), ?, ?)',
-        [path, backupPath, new Date().toISOString()],
-      )
+      this.db.run('INSERT INTO backups (path, backup_path, time) VALUES (?, ?, ?)', [
+        path,
+        backupPath,
+        new Date().toISOString(),
+      ])
     })
   }
 
@@ -58,9 +46,8 @@ class DataBaseLite {
    * @param path 源文件路径
    */
   deleteBackup(path: string): void {
-    const database = this.db
-    database.serialize(() => {
-      database.run('DELETE FROM backups WHERE id = (SELECT id FROM files WHERE path = ?)', [path])
+    this.db.serialize(() => {
+      this.db.run('DELETE FROM backups WHERE path = ?', [path])
     })
   }
 
@@ -70,10 +57,9 @@ class DataBaseLite {
    * @returns 备份列表
    */
   getBackupList(path: string): Promise<Array<string>> {
-    const database = this.db
     return new Promise((resolve, reject) => {
-      database.all(
-        'SELECT backup_path FROM backups WHERE id = (SELECT id FROM files WHERE path = ?)',
+      this.db.all(
+        'SELECT backup_path FROM backups WHERE path = ?',
         [path],
         (err, rows: Array<string>) => {
           if (err) reject(err)
@@ -82,6 +68,79 @@ class DataBaseLite {
       )
     })
   }
+
+  /**
+   * 记录加密文件
+   * @param path 被加密文件路径
+   */
+  addEncryptFile(path: string, password: string): void {
+    const database = this.db
+    database.serialize(() => {
+      database.run('INSERT INTO encrypt_files (path, password) VALUES (?, ?)', [path, password])
+    })
+  }
+
+  /**
+   * 检查文件是否被加密
+   * @param path 被加密文件路径
+   * @returns
+   * - true: 被加密
+   * - false: 未被加密
+   */
+  checkEncryptFile(path: string): Promise<boolean> {
+    const database = this.db
+    return new Promise((resolve, reject) => {
+      database.all('SELECT path FROM encrypt_files WHERE path = ?', [path], (err, rows) => {
+        if (err) reject(err)
+        resolve(rows.length !== 0)
+      })
+    })
+  }
+
+  /**
+   * 检查密码是否正确
+   * @param path 被加密文件路径
+   * @param password 密码
+   * @returns
+   */
+  checkPassword(path: string, password: string): Promise<boolean> {
+    const database = this.db
+    return new Promise((resolve, reject) => {
+      database.all(
+        'SELECT path FROM encrypt_files WHERE path = ? AND password = ?',
+        [path, password],
+        (err, rows) => {
+          if (err) reject(err)
+          resolve(rows.length !== 0)
+        },
+      )
+    })
+  }
+
+  /**
+   * 删除加密文件
+   * @param path 被加密文件路径
+   */
+  async removeEncryptFile(path: string, password: string): Promise<void> {
+    return new Promise(async (resolve, reject) => {
+      const isPassword = await this.checkPassword(path, password)
+      if (!isPassword) reject('密码错误')
+      else
+        this.db.serialize(() => {
+          this.db.run('DELETE FROM encrypt_files WHERE path = ? AND password = ?', [path, password])
+        })
+      resolve()
+    })
+  }
+
+  getEnc() {
+    return new Promise((resolve, reject) => {
+      this.db.all('SELECT * FROM encrypt_files', [], (err, rows) => {
+        if (err) reject(err)
+        resolve(rows)
+      })
+    })
+  }
 }
 
-export default DataBaseLite
+export default new DataBaseLite()

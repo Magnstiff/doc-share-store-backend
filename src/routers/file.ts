@@ -6,6 +6,7 @@ import { sizeToString } from '../common/file'
 import { fileLogger } from '../common/logger'
 import { FileInfomation } from '../types'
 import Busboy from 'busboy'
+import db from '../common/database'
 
 /**
  * check if the file path is valid
@@ -62,9 +63,18 @@ export function getFiles(req: Request, res: Response) {
       isFolder: stats.isDirectory(),
       fileSize: stats.isDirectory() ? '-' : sizeToString(size),
       filePath: path.join(req.query.filePath.toString(), filename),
+      encrypt: undefined,
     }
   })
-  res.send(files)
+  // check if the file is encrypted
+  Promise.all(
+    files.map(async (file) => {
+      file.encrypt = await db.checkEncryptFile(path.join(config.filePath, file.filePath))
+      return file
+    }),
+  ).then((files) => {
+    res.send(files)
+  })
 }
 
 /**
@@ -72,10 +82,16 @@ export function getFiles(req: Request, res: Response) {
  * @param req
  * @param res
  */
-export function downloadFile(req: Request, res: Response) {
+export async function downloadFile(req: Request, res: Response) {
   const { exist, isDir, errorInfo, filePath } = checkFilePath(req)
   if (!exist || isDir) {
     res.send(errorInfo)
+    return
+  }
+  // check password
+  const password = req.query.password?.toString()
+  if ((await db.checkEncryptFile(filePath)) && !(await db.checkPassword(filePath, password))) {
+    res.send('password error')
     return
   }
   // log
@@ -90,10 +106,16 @@ export function downloadFile(req: Request, res: Response) {
  * @param req
  * @param res
  */
-export function previewFile(req: Request, res: Response) {
+export async function previewFile(req: Request, res: Response) {
   const { exist, isDir, errorInfo, filePath } = checkFilePath(req)
   if (!exist || isDir) {
     res.send(errorInfo)
+    return
+  }
+  // check password
+  const password = req.query.password?.toString()
+  if ((await db.checkEncryptFile(filePath)) && !(await db.checkPassword(filePath, password))) {
+    res.send('password error')
     return
   }
   // log
@@ -155,10 +177,19 @@ export function search(req: Request, res: Response) {
         isFolder: isDir,
         fileSize: isDir ? '-' : fs.statSync(currentPath).size.toString(),
         filePath: path.relative(config.filePath, currentPath),
+        encrypt: undefined,
       })
     }
   }
-  res.send(result)
+  // check if the file is encrypted
+  Promise.all(
+    result.map(async (file) => {
+      file.encrypt = await db.checkEncryptFile(path.join(config.filePath, file.filePath))
+      return file
+    }),
+  ).then((result) => {
+    res.send(result)
+  })
 }
 
 /**
@@ -180,4 +211,35 @@ export function uploadFile(req: Request, res: Response) {
     res.send('upload success')
   })
   req.pipe(busboy)
+}
+
+/**
+ * Encrypt file
+ * @param req
+ * @param res
+ */
+export async function encryptFile(req: Request, res: Response) {
+  // check if the filePath parameter is missing
+  const { exist, isDir, errorInfo, filePath } = checkFilePath(req)
+  if (!exist) {
+    res.send(errorInfo)
+    return
+  }
+  const encrypted = await db.checkEncryptFile(filePath)
+  // log
+  const ip = req.headers['x-forwarded-for'] || req.ip
+  fileLogger.info(`[web][${ip}] ${encrypted ? 'decrypt' : 'encrypt'} file: ${req.query.filePath}`)
+  // write into database
+  if (encrypted) {
+    db.removeEncryptFile(filePath, req.query.password.toString())
+      .then(() => {
+        res.send('解密成功')
+      })
+      .catch((err) => {
+        res.send(err)
+      })
+  } else {
+    db.addEncryptFile(filePath, req.query.password.toString())
+    res.send('加密成功')
+  }
 }

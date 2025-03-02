@@ -3,4 +3,5 @@ export interface FileInfomation {
   isFolder: boolean
   fileSize: string
   filePath: string
+  encrypt: boolean
 }

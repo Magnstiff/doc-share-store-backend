@@ -1,5 +1,5 @@
 import { Application, Response, Request } from 'express'
-import { getFiles, downloadFile, previewFile, search, uploadFile } from './file'
+import { getFiles, downloadFile, previewFile, search, uploadFile, encryptFile } from './file'
 import { getSysInfo } from './system'
 
 // router registration
@@ -16,6 +16,7 @@ const registRouter: {
   '/search': { handle: search, method: 'get' },
   '/upload': { handle: uploadFile, method: 'post' },
   '/systemInfo': { handle: getSysInfo, method: 'get' },
+  '/encrypt': { handle: encryptFile, method: 'get' },
 }
 
 // regist routers
