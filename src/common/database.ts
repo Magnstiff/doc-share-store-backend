@@ -43,11 +43,11 @@ class DataBaseLite {
   /**
    * 删除备份
    * @param database 数据库实例
-   * @param path 源文件路径
+   * @param backupUUID 备份文件uuid
    */
-  deleteBackup(path: string): void {
+  deleteBackup(backupUUID: string): void {
     this.db.serialize(() => {
-      this.db.run('DELETE FROM backups WHERE path = ?', [path])
+      this.db.run('DELETE FROM backups WHERE backup_path = ?', [backupUUID])
     })
   }
 
@@ -133,6 +133,10 @@ class DataBaseLite {
     })
   }
 
+  /**
+   * 获取所有加密文件
+   * @returns
+   */
   getEnc() {
     return new Promise((resolve, reject) => {
       this.db.all('SELECT * FROM encrypt_files', [], (err, rows) => {

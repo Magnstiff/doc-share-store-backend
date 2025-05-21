@@ -2,41 +2,12 @@ import config from '../../nasConfig'
 import path from 'path'
 import fs, { readdirSync } from 'fs'
 import { Request, Response } from 'express'
-import { sizeToString } from '../common/file'
+import { sizeToString, checkFilePath } from '../common/file'
 import { fileLogger } from '../common/logger'
 import { FileInfomation } from '../types'
 import Busboy from 'busboy'
 import db from '../common/database'
-
-/**
- * check if the file path is valid
- * @param req request
- * @returns {exist, isDir, errorInfo, filePath}
- */
-function checkFilePath(req: Request): {
-  exist: boolean
-  isDir: boolean
-  errorInfo: string
-  filePath: string
-} {
-  let exist = false
-  let isDir = false
-  let errorInfo = ''
-  let filePath = ''
-  if (!req.query.filePath) {
-    errorInfo = 'filePath is required'
-  } else {
-    exist = true
-    filePath = path.join(config.filePath, req.query.filePath.toString())
-    if (!fs.existsSync(filePath)) {
-      errorInfo = 'file not exists'
-    } else if (fs.statSync(filePath).isDirectory()) {
-      isDir = true
-      errorInfo = 'file is a folder'
-    }
-  }
-  return { exist, isDir, errorInfo, filePath }
-}
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * 获取文件夹信息
@@ -243,3 +214,67 @@ export async function encryptFile(req: Request, res: Response) {
     res.send('加密成功')
   }
 }
+
+/**
+ * add backup to database
+ * @param req 
+ * @param res 
+ */
+export async function createBackup(req: Request, res: Response) {
+  // check if the filePath parameter is missing
+  const { exist, isDir, errorInfo, filePath } = checkFilePath(req)
+  if (!exist || isDir) {
+    res.send(errorInfo)
+    return
+  }
+  const backupName:string = uuidv4();
+  db.createBackup(filePath, backupName);
+  // 复制文件到备份文件夹
+  fs.cpSync(filePath, path.join(config.backupPath, backupName), { recursive: true });
+  res.send('备份成功');
+}
+
+/**
+ * get backup list
+ * @param req 
+ * @param res 
+ */
+export async function getBackupList(req: Request, res: Response) {
+  const { exist, isDir, errorInfo, filePath } = checkFilePath(req)
+  if (!exist || isDir) {
+    res.send(errorInfo)
+    return
+  }
+  db.getBackupList(filePath).then((backupList: Array<string>) => {
+    res.send(backupList);
+  }).catch((err) => {
+    res.send(err);
+  })
+}
+
+/**
+ * backup file
+ * @param request 
+ * @param response 
+ */
+export async function backupFile(request: Request, response: Response) {
+  const { exist, isDir, errorInfo, filePath } = checkFilePath(request)
+  if (!exist || isDir) {
+    response.send(errorInfo)
+    return
+  }
+  const backupUUID = request.query.backupUUID.toString()
+  const backupFilePath = path.join(config.backupPath, backupUUID);
+  // 新建旧的备份
+  const backupName:string = uuidv4();
+  db.createBackup(filePath, backupName);
+  fs.cpSync(filePath, backupFilePath, { recursive: true });
+  // 删除需求备份
+  db.deleteBackup(backupUUID);
+  // 恢复需求备份
+  fs.rmSync(filePath, { recursive: true });
+  fs.cpSync(backupFilePath, filePath, { recursive: true });
+  fs.rmSync(backupFilePath, { recursive: true });
+  response.send('恢复成功');
+}
+
