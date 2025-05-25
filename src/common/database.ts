@@ -59,7 +59,7 @@ class DataBaseLite {
   getBackupList(path: string): Promise<Array<string>> {
     return new Promise((resolve, reject) => {
       this.db.all(
-        'SELECT backup_path FROM backups WHERE path = ?',
+        'SELECT path, backup_path, time FROM backups WHERE path = ?',
         [path],
         (err, rows: Array<string>) => {
           if (err) reject(err)
